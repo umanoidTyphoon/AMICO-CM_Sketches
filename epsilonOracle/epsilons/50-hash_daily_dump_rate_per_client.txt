@@ -1,0 +1,12 @@
+Error rate computed: 0.0 		epsilon: 0.00090609394282
+Error rate computed: 1.05126829148 	epsilon: 0.00143067464656
+Error rate computed: 2.50301974162 	epsilon: 0.00159898931086
+Error rate computed: 3.92974099434 	epsilon: 0.00169892614279
+Error rate computed: 4.58052612716 	epsilon: 0.00175373021191
+Error rate computed: 5.63179441865 	epsilon: 0.00178247988751
+Error rate computed: 6.15742856439 	epsilon: 0.00181218788564
+Error rate computed: 7 	 		epsilon: 
+Error rate computed: 8.68547850342 	epsilon: 0.00194162987747
+Error rate computed: 9 			epsilon: 
+Error rate computed: 10.9131660735 	epsilon: 0.00201354209515
+Error rate computed: 17.7213797707 	epsilon: 0.00226523485705
