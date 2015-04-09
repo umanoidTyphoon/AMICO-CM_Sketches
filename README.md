@@ -1,1 +1,1 @@
-# AMICO_Count_Min_Sketches
+# AMICO-CM_Sketches
