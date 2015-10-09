@@ -30,6 +30,7 @@ def generate_graph(graph_id):
         generate_CSV_classification_file()
         return
 
+
 def generate_CSV_download_file():
     connection = util.connect_to_db()
     connection_cursor = connection.cursor()
@@ -90,122 +91,227 @@ def generate_CSV_download_file():
             total_dmg_count_per_second = row[1]
 
             if malware_timestamp_set.__contains__(timestamp):
-                csv_map[timestamp].append(total_apk_count_per_second)
+                csv_map[timestamp].append(total_dmg_count_per_second)
             else:
-                csv_map[timestamp].extend([0, total_apk_count_per_second])
+                csv_map[timestamp].extend([0, total_dmg_count_per_second])
 
 
-    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'ELF' GROUP BY  timestamp """ + \
-            """ORDER BY timestamp ASC"""
-    connection_cursor.execute(query)
-
-    total_elf = connection_cursor.fetchone()[0]
-
+    malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
             """pe.dump_id = ams.dump_id AND pe.file_type = 'ELF' AND ams.score > """ + str(AMICO_THRESHOLD) + \
             """GROUP BY  timestamp ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    malware_elf = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            malware_elf_count_per_second = row[1]
 
+            csv_map[timestamp].append(malware_elf_count_per_second)
+            malware_timestamp_set.add(timestamp)
 
-    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'EXE' GROUP BY  timestamp """ + \
+    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'ELF' GROUP BY  timestamp """ + \
             """ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    total_exe = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            total_elf_count_per_second = row[1]
 
+            if malware_timestamp_set.__contains__(timestamp):
+                csv_map[timestamp].append(total_elf_count_per_second)
+            else:
+                csv_map[timestamp].extend([0, total_elf_count_per_second])
+
+
+    malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
             """pe.dump_id = ams.dump_id AND pe.file_type = 'EXE' AND ams.score > """ + str(AMICO_THRESHOLD) + \
             """GROUP BY  timestamp ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    malware_exe = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            malware_exe_count_per_second = row[1]
+
+            csv_map[timestamp].append(malware_exe_count_per_second)
+            malware_timestamp_set.add(timestamp)
+
+    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'EXE' GROUP BY  timestamp """ + \
+            """ORDER BY timestamp ASC"""
+    connection_cursor.execute(query)
+
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            total_exe_count_per_second = row[1]
+
+            if malware_timestamp_set.__contains__(timestamp):
+                csv_map[timestamp].append(total_exe_count_per_second)
+            else:
+                csv_map[timestamp].extend([0, total_exe_count_per_second])
 
 ########################################################################################################################
 
 ######################################################### PDF #########################################################
 
-    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'PDF' GROUP BY  timestamp """ + \
-            """ORDER BY timestamp ASC"""
-    connection_cursor.execute(query)
-
-    total_pdf = connection_cursor.fetchone()[0]
-
+    malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
             """pe.dump_id = ams.dump_id AND pe.file_type = 'PDF' AND ams.score > """ + str(AMICO_THRESHOLD) + \
             """GROUP BY  timestamp ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    malware_pdf = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            malware_pdf_count_per_second = row[1]
+
+            csv_map[timestamp].append(malware_pdf_count_per_second)
+            malware_timestamp_set.add(timestamp)
+
+    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'PDF' GROUP BY  timestamp """ + \
+            """ORDER BY timestamp ASC"""
+    connection_cursor.execute(query)
+
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            total_pdf_count_per_second = row[1]
+
+            if malware_timestamp_set.__contains__(timestamp):
+                csv_map[timestamp].append(total_pdf_count_per_second)
+            else:
+                csv_map[timestamp].extend([0, total_pdf_count_per_second])
 
 ########################################################################################################################
 
 ######################################################## FLASH ########################################################
 
-    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'SWF' GROUP BY  timestamp """ + \
-            """ORDER BY timestamp ASC"""
-    connection_cursor.execute(query)
-
-    total_swf = connection_cursor.fetchone()[0]
-
+    malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
             """pe.dump_id = ams.dump_id AND pe.file_type = 'SWF' AND ams.score > """ + str(AMICO_THRESHOLD) + \
             """GROUP BY  timestamp ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    malware_swf = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            malware_swf_count_per_second = row[1]
+
+            csv_map[timestamp].append(malware_swf_count_per_second)
+            malware_timestamp_set.add(timestamp)
+
+    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'SWF' GROUP BY  timestamp """ + \
+            """ORDER BY timestamp ASC"""
+    connection_cursor.execute(query)
+
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            total_swf_count_per_second = row[1]
+
+            if malware_timestamp_set.__contains__(timestamp):
+                csv_map[timestamp].append(total_swf_count_per_second)
+            else:
+                csv_map[timestamp].extend([0, total_swf_count_per_second])
 
 ########################################################################################################################
 
 ###################################################### COMPRESSED ######################################################
 
-    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'JAR' GROUP BY  timestamp """ + \
-            """ORDER BY timestamp ASC"""
-    connection_cursor.execute(query)
-
-    total_jar = connection_cursor.fetchone()[0]
-
+    malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
             """pe.dump_id = ams.dump_id AND pe.file_type = 'JAR' AND ams.score > """ + str(AMICO_THRESHOLD) + \
             """GROUP BY  timestamp ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    malware_jar = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            malware_jar_count_per_second = row[1]
 
+            csv_map[timestamp].append(malware_jar_count_per_second)
+            malware_timestamp_set.add(timestamp)
 
-    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'RAR' GROUP BY  timestamp """ + \
+    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'JAR' GROUP BY  timestamp """ + \
             """ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    total_rar = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            total_jar_count_per_second = row[1]
 
+            if malware_timestamp_set.__contains__(timestamp):
+                csv_map[timestamp].append(total_jar_count_per_second)
+            else:
+                csv_map[timestamp].extend([0, total_jar_count_per_second])
+
+
+    malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
             """pe.dump_id = ams.dump_id AND pe.file_type = 'RAR' AND ams.score > """ + str(AMICO_THRESHOLD) + \
             """GROUP BY  timestamp ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    malware_rar = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            malware_rar_count_per_second = row[1]
 
+            csv_map[timestamp].append(malware_rar_count_per_second)
+            malware_timestamp_set.add(timestamp)
 
-    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'ZIP' GROUP BY  timestamp """ + \
+    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'RAR' GROUP BY  timestamp """ + \
             """ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    total_zip = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            total_rar_count_per_second = row[1]
 
+            if malware_timestamp_set.__contains__(timestamp):
+                csv_map[timestamp].append(total_rar_count_per_second)
+            else:
+                csv_map[timestamp].extend([0, total_rar_count_per_second])
+
+
+    malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
             """pe.dump_id = ams.dump_id AND pe.file_type = 'ZIP' AND ams.score > """ + str(AMICO_THRESHOLD) + \
             """GROUP BY  timestamp ORDER BY timestamp ASC"""
     connection_cursor.execute(query)
 
-    malware_zip = connection_cursor.fetchone()[0]
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            malware_zip_count_per_second = row[1]
+
+            csv_map[timestamp].append(malware_zip_count_per_second)
+            malware_timestamp_set.add(timestamp)
+
+    query = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = 'ZIP' GROUP BY  timestamp """ + \
+            """ORDER BY timestamp ASC"""
+    connection_cursor.execute(query)
+
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = row[0]
+            total_zip_count_per_second = row[1]
+
+            if malware_timestamp_set.__contains__(timestamp):
+                csv_map[timestamp].append(total_zip_count_per_second)
+            else:
+                csv_map[timestamp].extend([0, total_zip_count_per_second])
 
 ########################################################################################################################
 
     #TODO Da cambiare ordine malware legitimate
-    header = "Second_ID, Tot_APK,Mal_APK,Tot_DMG,Mal_DMG,Tot_ELF,Mal_ELF,Tot_EXE,Mal_EXE,Tot_PDF,Mal_PDF,Tot_SWF," + \
-             "Mal_SWF,Tot_JAR,Mal_JAR,Tot_RAR,Mal_RAR,Tot_ZIP,Mal_ZIP, Timestamp"
+    header = "Second_ID,Mal_APK,Tot_APK,Mal_DMG,Tot_DMG,Mal_ELF,Tot_ELF,Mal_EXE,Tot_EXE,Mal_PDF,Tot_PDF,Mal_SWF," + \
+             "Tot_SWF,Mal_JAR,Tot_JAR,Mal_RAR,Tot_RAR,Mal_ZIP,Tot_ZIP, Timestamp"
 
 # def test_graph_generation():
 graph_id = DOWNLOAD_GRAPH_ID
