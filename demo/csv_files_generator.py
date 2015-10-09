@@ -309,7 +309,6 @@ def generate_CSV_download_file():
 
 ########################################################################################################################
 
-    #TODO Da cambiare ordine malware legitimate
     header = "Second_ID,Mal_APK,Tot_APK,Mal_DMG,Tot_DMG,Mal_ELF,Tot_ELF,Mal_EXE,Tot_EXE,Mal_PDF,Tot_PDF,Mal_SWF," + \
              "Tot_SWF,Mal_JAR,Tot_JAR,Mal_RAR,Tot_RAR,Mal_ZIP,Tot_ZIP, Timestamp"
 
