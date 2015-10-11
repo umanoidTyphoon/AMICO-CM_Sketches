@@ -51,9 +51,10 @@ def generate_CSV_download_file():
     csv_writer = None
 
     header = "Second_ID,Mal_APK,Tot_APK,Mal_DMG,Tot_DMG,Mal_ELF,Tot_ELF,Mal_EXE,Tot_EXE,Mal_PDF,Tot_PDF,Mal_SWF," + \
-             "Tot_SWF,Mal_JAR,Tot_JAR,Mal_RAR,Tot_RAR,Mal_ZIP,Tot_ZIP, Timestamp"
-    header_list = ["Second_ID","Mal_APK","Tot_APK","Mal_DMG","Tot_DMG","Mal_ELF","Tot_ELF","Mal_EXE","Tot_EXE","Mal_PDF",
-                   "Tot_PDF","Mal_SWF","Tot_SWF","Mal_JAR","Tot_JAR","Mal_RAR","Tot_RAR","Mal_ZIP","Tot_ZIP", "Timestamp"]
+             "Tot_SWF,Mal_JAR,Tot_JAR,Mal_RAR,Tot_RAR,Mal_ZIP,Tot_ZIP,Timestamp,Next_Download_Event_[s]"
+    header_list = ["Second_ID", "Mal_APK", "Tot_APK", "Mal_DMG", "Tot_DMG", "Mal_ELF", "Tot_ELF", "Mal_EXE", "Tot_EXE",
+                   "Mal_PDF", "Tot_PDF", "Mal_SWF", "Tot_SWF", "Mal_JAR", "Tot_JAR", "Mal_RAR", "Tot_RAR", "Mal_ZIP",
+                   "Tot_ZIP", "Timestamp", "Next_Download_Event_[s]"]
     created_csv_file = OUT_DIR + "/" + str(DOWNLOAD_GRAPH_ID) + "-downloads_" + \
                        datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -197,9 +198,9 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_exe_count_per_second])
 
-########################################################################################################################
+            ########################################################################################################################
 
-######################################################### PDF #########################################################
+            ######################################################### PDF #########################################################
 
     malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
@@ -235,9 +236,9 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_pdf_count_per_second])
 
-########################################################################################################################
+            ########################################################################################################################
 
-######################################################## FLASH ########################################################
+            ######################################################## FLASH ########################################################
 
     malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
@@ -273,9 +274,9 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_swf_count_per_second])
 
-########################################################################################################################
+            ########################################################################################################################
 
-###################################################### COMPRESSED ######################################################
+            ###################################################### COMPRESSED ######################################################
 
     malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
@@ -381,7 +382,7 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_zip_count_per_second])
 
-########################################################################################################################
+            ########################################################################################################################
     sorted_csv_map = sorted(csv_map.items(), key=operator.itemgetter(0))
 
     csv_map_aux = defaultdict(list)
@@ -401,30 +402,95 @@ def generate_CSV_download_file():
             break
 
     max_values = len(header.split(',')) - 2
+    next_download_events = 0
+    csv_rows = list()
+    csv_rows_list_size  = len(csv_rows)
     sorted_csv_map_aux = sorted(csv_map_aux.items(), key=operator.itemgetter(0))
     UID = 0
-    with open(created_csv_file, "a") as csv_file:
-        csv_writer = csv.writer(csv_file, csv.QUOTE_NONNUMERIC)
+    #with open(created_csv_file, "a") as csv_file:
+    #    csv_writer = csv.writer(csv_file, csv.QUOTE_NONNUMERIC)
 
-        for timestamp, file_list in sorted_csv_map_aux:
-            formatted_row = format_row(file_list, max_values)
+    for timestamp, file_list in sorted_csv_map_aux:
+        formatted_row = format_row(file_list, max_values)
+        formatted_row.insert(0, UID)
+        formatted_row.append(timestamp)
+        csv_rows.append(formatted_row)
+        UID += 1
+
+    writable_csv_rows = list()
+    while csv_rows:
+        current_row     = csv_rows.pop(0)
+        if not csv_rows:
+            writable_csv_rows.append(current_row)
+            continue
+        next_row        = csv_rows[0]
+        timestamp_index = len(current_row) - 1
+
+        current_timestamp_string = current_row[timestamp_index]
+        next_timestamp_string    = next_row[timestamp_index]
+
+        current_timestamp  = datetime.strptime(current_timestamp_string, '%Y-%m-%d %H:%M:%S')
+        next_timestamp     = datetime.strptime(next_timestamp_string, '%Y-%m-%d %H:%M:%S')
+        time_delta_in_secs = int((next_timestamp - current_timestamp).total_seconds()) - 1
+        current_row.append(time_delta_in_secs)
+
+        writable_csv_rows.append(current_row)
+
+    writable_sorted_csv_map = list()
+    for timestamp, file_list in sorted_csv_map:
+        if cmp(timestamp, first_useful_date) < 0 or cmp(timestamp, last_useful_date) > 0:
+            continue
+        else:
+            writable_sorted_csv_map.append([timestamp, file_list])
+
+    writable_csv_rows_aux = list()
+    while writable_sorted_csv_map:
+        timestamp_file_list_first_pair = writable_sorted_csv_map.pop(0)
+        timestamp_str_first_pair       = timestamp_file_list_first_pair[0]
+        file_list_first_pair           = timestamp_file_list_first_pair[1]
+
+        if not writable_sorted_csv_map:
+            formatted_row = format_row(file_list_first_pair, max_values)
             formatted_row.insert(0, UID)
-            formatted_row.append(timestamp)
-            csv_writer.writerow(formatted_row)
+            formatted_row.append(timestamp_str_first_pair)
+            writable_csv_rows_aux.append(formatted_row)
             UID += 1
+            continue
+        timestamp_file_list_second_pair = writable_sorted_csv_map[0]
+        timestamp_str_second_pair       = timestamp_file_list_second_pair[0]
+
+        formatted_row = format_row(file_list_first_pair, max_values)
+        formatted_row.insert(0, UID)
+        formatted_row.append(timestamp_str_first_pair)
+
+        timestamp_first_pair  = datetime.strptime(timestamp_str_first_pair, '%Y-%m-%d %H:%M:%S')
+        timestamp_second_pair = datetime.strptime(timestamp_str_second_pair, '%Y-%m-%d %H:%M:%S')
+        time_delta_in_secs = int((timestamp_second_pair - timestamp_first_pair).total_seconds()) - 1
+        formatted_row.append(time_delta_in_secs)
+
+        writable_csv_rows_aux.append(formatted_row)
+        UID += 1
+
+    last_formatted_row_in_writable_csv_rows      = writable_csv_rows.pop(len(writable_csv_rows) - 1)
+    first_formatted_row_in_writable_csv_rows_aux = writable_csv_rows_aux[0]
+    timestamp_index = len(last_formatted_row_in_writable_csv_rows) - 1
+
+    current_timestamp_string = last_formatted_row_in_writable_csv_rows[timestamp_index]
+    next_timestamp_string    = first_formatted_row_in_writable_csv_rows_aux[timestamp_index]
+
+    current_timestamp  = datetime.strptime(current_timestamp_string, '%Y-%m-%d %H:%M:%S')
+    next_timestamp     = datetime.strptime(next_timestamp_string, '%Y-%m-%d %H:%M:%S')
+    time_delta_in_secs = int((next_timestamp - current_timestamp).total_seconds()) - 1
+    last_formatted_row_in_writable_csv_rows.append(time_delta_in_secs)
+
+    writable_csv_rows_aux.insert(0, last_formatted_row_in_writable_csv_rows)
 
     with open(created_csv_file, "a") as csv_file:
         csv_writer = csv.writer(csv_file, csv.QUOTE_NONNUMERIC)
-
-        for timestamp, file_list in sorted_csv_map:
-            if cmp(timestamp, first_useful_date) < 0 or cmp(timestamp, last_useful_date) > 0:
-                continue
-            else:
-                formatted_row = format_row(file_list, max_values)
-                formatted_row.insert(0, UID)
-                formatted_row.append(timestamp)
-                csv_writer.writerow(formatted_row)
-                UID += 1
+        for row in writable_csv_rows:
+            csv_writer.writerow(row)
+        for row in writable_csv_rows_aux:
+            csv_writer.writerow(row)
 
 
 def perform_queries_on(connection, server, file_type):
