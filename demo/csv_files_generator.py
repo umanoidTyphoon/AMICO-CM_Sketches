@@ -26,7 +26,7 @@ def generate_graph(graph_id):
         generate_CSV_download_file()
         return
     if graph_id == MAP_GRAPH_ID:
-        generate_CSV_map_file()
+        generate_JSON_map_file()
         return
     if graph_id == TRAINING_GRAPH_ID:
         generate_CSV_training_file()
@@ -55,7 +55,7 @@ def generate_CSV_download_file():
     header_list = ["Second_ID","Mal_APK","Tot_APK","Mal_DMG","Tot_DMG","Mal_ELF","Tot_ELF","Mal_EXE","Tot_EXE","Mal_PDF",
                    "Tot_PDF","Mal_SWF","Tot_SWF","Mal_JAR","Tot_JAR","Mal_RAR","Tot_RAR","Mal_ZIP","Tot_ZIP", "Timestamp"]
     created_csv_file = OUT_DIR + "/" + str(DOWNLOAD_GRAPH_ID) + "-downloads_" + \
-                      datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S')
+                       datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S')
 
     with open(created_csv_file, "wb") as csv_file:
         csv_writer = csv.writer(csv_file)
@@ -197,9 +197,9 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_exe_count_per_second])
 
-            ########################################################################################################################
+########################################################################################################################
 
-            ######################################################### PDF #########################################################
+######################################################### PDF #########################################################
 
     malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
@@ -235,9 +235,9 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_pdf_count_per_second])
 
-            ########################################################################################################################
+########################################################################################################################
 
-            ######################################################## FLASH ########################################################
+######################################################## FLASH ########################################################
 
     malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
@@ -273,9 +273,9 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_swf_count_per_second])
 
-            ########################################################################################################################
+########################################################################################################################
 
-            ###################################################### COMPRESSED ######################################################
+###################################################### COMPRESSED ######################################################
 
     malware_timestamp_set = set()
     query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
@@ -381,7 +381,7 @@ def generate_CSV_download_file():
             else:
                 csv_map[timestamp].extend([0, total_zip_count_per_second])
 
-            ########################################################################################################################
+########################################################################################################################
     sorted_csv_map = sorted(csv_map.items(), key=operator.itemgetter(0))
 
     csv_map_aux = defaultdict(list)
@@ -426,6 +426,45 @@ def generate_CSV_download_file():
                 csv_writer.writerow(formatted_row)
                 UID += 1
 
+
+def perform_queries_on(connection, server, file_type):
+
+    connection_cursor = connection.cursor()
+
+    first_query  = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = '""" + file_type + \
+                   """' AND server = '""" + server + """' GROUP BY timestamp ORDER BY timestamp ASC"""
+    second_query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
+                   """pe.dump_id = ams.dump_id AND pe.file_type = '""" + file_type + """' AND ams.score > """  + \
+                   str(AMICO_THRESHOLD) + """ AND server = '""" + server + """' GROUP BY  timestamp ORDER """  +\
+                   """BY timestamp ASC"""
+
+    monitoring_server_ip                      = "127.0.0.1"
+    external_server_ip                        = server
+    # external_server_lat, external_server_lon = geolocalize_server(external_server_ip)
+    connection_cursor.execute(first_query)
+    for row in connection_cursor:
+        if row is not None:
+            timestamp = str(row[0])
+            total_count_per_second = row[1]
+
+            dayID = timestamp.split()[0]
+
+
+
+def generate_JSON_map_file():
+    connection = util.connect_to_db()
+    connection_cursor = connection.cursor()
+    json_map = defaultdict(list)
+
+    query = """SELECT DISTINCT server FROM pe_dumps"""
+
+    for row in connection_cursor:
+        if row is not None:
+            server = str(row[0])
+
+            perform_queries_on(connection, server, "APK")
+
+
 # def test_graph_generation():
-graph_id = DOWNLOAD_GRAPH_ID
+graph_id = MAP_GRAPH_ID
 generate_graph(graph_id)
