@@ -56,7 +56,7 @@ def generate_CSV_download_file():
                    "Mal_PDF", "Tot_PDF", "Mal_SWF", "Tot_SWF", "Mal_JAR", "Tot_JAR", "Mal_RAR", "Tot_RAR", "Mal_ZIP",
                    "Tot_ZIP", "Timestamp", "Next_Download_Event_[s]"]
     created_csv_file = OUT_DIR + "/" + str(DOWNLOAD_GRAPH_ID) + "-downloads_" + \
-                       datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S')
+                       datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + ".csv"
 
     with open(created_csv_file, "wb") as csv_file:
         csv_writer = csv.writer(csv_file)
@@ -493,43 +493,57 @@ def generate_CSV_download_file():
             csv_writer.writerow(row)
 
 
-def perform_queries_on(connection, server, file_type):
+def perform_queries_on(connection, json_map, file_type):
+    connection_cursor  = connection.cursor()
 
-    connection_cursor = connection.cursor()
+    query  = """SELECT timestamp, host, COUNT(file_type) FROM pe_dumps WHERE file_type = '""" + file_type + \
+                   """' AND host IS NOT NULL GROUP BY timestamp, host ORDER BY timestamp ASC"""
 
-    first_query  = """SELECT timestamp, COUNT(file_type) FROM pe_dumps WHERE file_type = '""" + file_type + \
-                   """' AND server = '""" + server + """' GROUP BY timestamp ORDER BY timestamp ASC"""
-    second_query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
-                   """pe.dump_id = ams.dump_id AND pe.file_type = '""" + file_type + """' AND ams.score > """  + \
-                   str(AMICO_THRESHOLD) + """ AND server = '""" + server + """' GROUP BY  timestamp ORDER """  +\
-                   """BY timestamp ASC"""
+    connection_cursor.execute(query)
+    for triple in connection_cursor:
+        timestamp              = str(triple[0])
+        timestamp_ymd          = timestamp.split()[0]
+        host                   = triple[1]
+        total_count_per_second = triple[2]
 
-    monitoring_server_ip                      = "127.0.0.1"
-    external_server_ip                        = server
-    # external_server_lat, external_server_lon = geolocalize_server(external_server_ip)
-    connection_cursor.execute(first_query)
-    for row in connection_cursor:
-        if row is not None:
-            timestamp = str(row[0])
-            total_count_per_second = row[1]
+        json_map[timestamp_ymd][host] += total_count_per_second
 
-            dayID = timestamp.split()[0]
+    # query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
+    #                """pe.dump_id = ams.dump_id AND pe.file_type = '""" + file_type + """' AND ams.score > """  + \
+    #                str(AMICO_THRESHOLD) + """ AND server = '""" + server + """' GROUP BY  timestamp ORDER """  +\
+    #                """BY timestamp ASC"""
+    #
+    # connection_cursor.execute(query)
+    # for tuple in connection_cursor:
+    #     timestamp              = str(tuple[0])
+    #     timestamp_ymd          = timestamp.split()[0]
+    #     total_count_per_second = tuple[1]
+    #
+    #     if timestamp_ymd in malware_map:
+    #         malware_map[timestamp_ymd] += total_count_per_second
+    #     else:
+    #         malware_map[timestamp_ymd] = total_count_per_second
+
+    return total_map, malware_map
+
+    # monitoring_server_ip                      = "127.0.0.1"
+    # external_server_ip                        = server
+    # # external_server_lat, external_server_lon = geolocalize_server(external_server_ip)
+    # connection_cursor.execute(first_query)
+    # for row in connection_cursor:
+    #     if row is not None:
+    #         timestamp = str(row[0])
+    #         total_count_per_second = row[1]
+    #
+    #         dayID = timestamp.split()[0]
 
 
 
 def generate_JSON_map_file():
-    connection = util.connect_to_db()
-    connection_cursor = connection.cursor()
-    json_map = defaultdict(list)
+    connection        = util.connect_to_db()
+    json_map          = defaultdict(lambda: defaultdict(int))
 
-    query = """SELECT DISTINCT server FROM pe_dumps"""
-
-    for row in connection_cursor:
-        if row is not None:
-            server = str(row[0])
-
-            perform_queries_on(connection, server, "APK")
-
+    perform_queries_on(connection, json_map, "PDF")
 
 # def test_graph_generation():
 graph_id = MAP_GRAPH_ID
