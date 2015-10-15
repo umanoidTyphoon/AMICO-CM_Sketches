@@ -4,6 +4,14 @@ from collections import defaultdict
 from datetime    import datetime
 from time        import time
 
+# python-geoip is a library that provides access to GeoIP databases. Currently it only supports accessing MaxMind
+# databases. It's similar to other GeoIP libraries but comes under the very liberal BSD license and also provides
+# an extra library that optionally ships a recent version of the Geolite2 database as provided by MaxMind.
+#
+# The python-geoip-geolite2 package includes GeoLite2 data created by MaxMind, available from maxmind.com under
+# the Creative Commons Attribution-ShareAlike 3.0 Unported License.
+from geoip import geolite2
+
 import copy
 import csv
 import json
@@ -547,6 +555,27 @@ def perform_queries_on(connection, server_host_mapping, total_json_map, malware_
     return server_host_mapping, total_json_map, malware_json_map
 
 
+def geolocalize_from_ip(str_ip_address):
+    match = geolite2.lookup(str_ip_address)
+
+    if match is not None:
+        location = match.location
+        if location is None:
+            country = match.country
+            if country is None:
+                continent = match.continent
+                if continent is None:
+                    return None
+                else:
+                    return [continent, None]
+            else:
+                return [country, None]
+        else:
+            return location
+    else:
+        return match
+
+
 def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_map):
     final_json_object_list      = list()
     sorted_total_json_map       = sorted(total_json_map.items(), key=operator.itemgetter(0))
@@ -612,6 +641,14 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
             server_json_object[server_ip]['Malware_RAR']   = rar_malware_count_per_day
             server_json_object[server_ip]['Malware_ZIP']   = zip_malware_count_per_day
             server_json_object[server_ip]['Malware_Count'] = malware_count_per_day
+
+            lat_lon_tuple = geolocalize_from_ip(server_ip)
+            if lat_lon_tuple is not None:
+                if lat_lon_tuple[0] is None or lat_lon_tuple[1] is None:
+                    server_json_object['Country']   = lat_lon_tuple[0]
+                if lat_lon_tuple[0] is not None and lat_lon_tuple[1] is not None:
+                    server_json_object['Latitude']  = lat_lon_tuple[0]
+                    server_json_object['Longitude'] = lat_lon_tuple[1]
 
             external_server_dict_list.append(server_json_object)
 
@@ -687,9 +724,6 @@ def generate_JSON_map_file():
 
     with open(created_json_file, "wb") as json_file:
         json.dump(JSON_object, json_file)
-
-
-    dictionary_index = 2
 
 # def test_graph_generation():
 graph_id = MAP_GRAPH_ID
