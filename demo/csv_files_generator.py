@@ -563,15 +563,55 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
             server_json_object = dict()
             server_json_object[server_ip] = dict()
 
-            server_json_object[server_ip]['Total_APK'] = file_type_total_count_per_day_pair[APK_FILE_TYPE]
-            server_json_object[server_ip]['Total_DMG'] = file_type_total_count_per_day_pair[DMG_FILE_TYPE]
-            server_json_object[server_ip]['Total_ELF'] = file_type_total_count_per_day_pair[ELF_FILE_TYPE]
-            server_json_object[server_ip]['Total_EXE'] = file_type_total_count_per_day_pair[EXE_FILE_TYPE]
-            server_json_object[server_ip]['Total_PDF'] = file_type_total_count_per_day_pair[PDF_FILE_TYPE]
-            server_json_object[server_ip]['Total_SWF'] = file_type_total_count_per_day_pair[SWF_FILE_TYPE]
-            server_json_object[server_ip]['Total_JAR'] = file_type_total_count_per_day_pair[JAR_FILE_TYPE]
-            server_json_object[server_ip]['Total_RAR'] = file_type_total_count_per_day_pair[RAR_FILE_TYPE]
-            server_json_object[server_ip]['Total_ZIP'] = file_type_total_count_per_day_pair[ZIP_FILE_TYPE]
+            apk_total_count_per_day = file_type_total_count_per_day_pair[APK_FILE_TYPE]
+            dmg_total_count_per_day = file_type_total_count_per_day_pair[DMG_FILE_TYPE]
+            elf_total_count_per_day = file_type_total_count_per_day_pair[ELF_FILE_TYPE]
+            exe_total_count_per_day = file_type_total_count_per_day_pair[EXE_FILE_TYPE]
+            pdf_total_count_per_day = file_type_total_count_per_day_pair[PDF_FILE_TYPE]
+            swf_total_count_per_day = file_type_total_count_per_day_pair[SWF_FILE_TYPE]
+            jar_total_count_per_day = file_type_total_count_per_day_pair[JAR_FILE_TYPE]
+            rar_total_count_per_day = file_type_total_count_per_day_pair[RAR_FILE_TYPE]
+            zip_total_count_per_day = file_type_total_count_per_day_pair[ZIP_FILE_TYPE]
+
+            total_count_per_day = apk_total_count_per_day + dmg_total_count_per_day + elf_total_count_per_day + \
+                                  exe_total_count_per_day + pdf_total_count_per_day + swf_total_count_per_day + \
+                                  jar_total_count_per_day + rar_total_count_per_day + zip_total_count_per_day
+
+            apk_malware_count_per_day = malware_json_map[timestamp][server_ip][APK_FILE_TYPE]
+            dmg_malware_count_per_day = malware_json_map[timestamp][server_ip][DMG_FILE_TYPE]
+            elf_malware_count_per_day = malware_json_map[timestamp][server_ip][ELF_FILE_TYPE]
+            exe_malware_count_per_day = malware_json_map[timestamp][server_ip][EXE_FILE_TYPE]
+            pdf_malware_count_per_day = malware_json_map[timestamp][server_ip][PDF_FILE_TYPE]
+            swf_malware_count_per_day = malware_json_map[timestamp][server_ip][SWF_FILE_TYPE]
+            jar_malware_count_per_day = malware_json_map[timestamp][server_ip][JAR_FILE_TYPE]
+            rar_malware_count_per_day = malware_json_map[timestamp][server_ip][RAR_FILE_TYPE]
+            zip_malware_count_per_day = malware_json_map[timestamp][server_ip][ZIP_FILE_TYPE]
+
+            malware_count_per_day = apk_malware_count_per_day + dmg_malware_count_per_day + elf_malware_count_per_day + \
+                                    exe_malware_count_per_day + pdf_malware_count_per_day + swf_malware_count_per_day + \
+                                    jar_malware_count_per_day + rar_malware_count_per_day + zip_malware_count_per_day
+
+            server_json_object[server_ip]['Total_APK']     = apk_total_count_per_day
+            server_json_object[server_ip]['Total_DMG']     = dmg_total_count_per_day
+            server_json_object[server_ip]['Total_ELF']     = elf_total_count_per_day
+            server_json_object[server_ip]['Total_EXE']     = exe_total_count_per_day
+            server_json_object[server_ip]['Total_PDF']     = pdf_total_count_per_day
+            server_json_object[server_ip]['Total_SWF']     = swf_total_count_per_day
+            server_json_object[server_ip]['Total_JAR']     = jar_total_count_per_day
+            server_json_object[server_ip]['Total_RAR']     = rar_total_count_per_day
+            server_json_object[server_ip]['Total_ZIP']     = zip_total_count_per_day
+            server_json_object[server_ip]['Total_Count']   = total_count_per_day
+
+            server_json_object[server_ip]['Malware_APK']   = apk_malware_count_per_day
+            server_json_object[server_ip]['Malware_DMG']   = dmg_malware_count_per_day
+            server_json_object[server_ip]['Malware_ELF']   = elf_malware_count_per_day
+            server_json_object[server_ip]['Malware_EXE']   = exe_malware_count_per_day
+            server_json_object[server_ip]['Malware_PDF']   = pdf_malware_count_per_day
+            server_json_object[server_ip]['Malware_SWF']   = swf_malware_count_per_day
+            server_json_object[server_ip]['Malware_JAR']   = jar_malware_count_per_day
+            server_json_object[server_ip]['Malware_RAR']   = rar_malware_count_per_day
+            server_json_object[server_ip]['Malware_ZIP']   = zip_malware_count_per_day
+            server_json_object[server_ip]['Malware_Count'] = malware_count_per_day
 
             external_server_dict_list.append(server_json_object)
 
