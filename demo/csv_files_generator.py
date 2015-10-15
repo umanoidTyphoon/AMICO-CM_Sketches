@@ -688,6 +688,7 @@ def generate_JSON_map_file():
     with open(created_json_file, "wb") as json_file:
         json.dump(JSON_object, json_file)
 
+
     dictionary_index = 2
 
 # def test_graph_generation():
