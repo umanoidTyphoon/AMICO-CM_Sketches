@@ -4,7 +4,9 @@ from collections import defaultdict
 from datetime    import datetime
 from time        import time
 
+import copy
 import csv
+import json
 import operator
 import util
 
@@ -13,6 +15,16 @@ DOWNLOAD_GRAPH_ID       = 1
 MAP_GRAPH_ID            = 2
 TRAFFIC_GRAPH_ID        = 0
 TRAINING_GRAPH_ID       = 3
+
+APK_FILE_TYPE           = 0
+DMG_FILE_TYPE           = 1
+ELF_FILE_TYPE           = 2
+EXE_FILE_TYPE           = 3
+PDF_FILE_TYPE           = 4
+SWF_FILE_TYPE           = 5
+JAR_FILE_TYPE           = 6
+RAR_FILE_TYPE           = 7
+ZIP_FILE_TYPE           = 8
 
 AMICO_THRESHOLD = 0.4
 OUT_DIR = "./out"
@@ -407,8 +419,6 @@ def generate_CSV_download_file():
     csv_rows_list_size  = len(csv_rows)
     sorted_csv_map_aux = sorted(csv_map_aux.items(), key=operator.itemgetter(0))
     UID = 0
-    #with open(created_csv_file, "a") as csv_file:
-    #    csv_writer = csv.writer(csv_file, csv.QUOTE_NONNUMERIC)
 
     for timestamp, file_list in sorted_csv_map_aux:
         formatted_row = format_row(file_list, max_values)
@@ -493,38 +503,36 @@ def generate_CSV_download_file():
             csv_writer.writerow(row)
 
 
-def perform_queries_on(connection, json_map, file_type):
-    connection_cursor  = connection.cursor()
+def perform_queries_on(connection, server_host_mapping, total_json_map, malware_json_map, file_type, dict_index):
+    connection_cursor   = connection.cursor()
 
-    query  = """SELECT timestamp, host, COUNT(file_type) FROM pe_dumps WHERE file_type = '""" + file_type + \
-                   """' AND host IS NOT NULL GROUP BY timestamp, host ORDER BY timestamp ASC"""
+    query = """SELECT timestamp, server, host, COUNT(file_type) FROM pe_dumps WHERE file_type = '""" + file_type + \
+                   """' AND server IS NOT NULL GROUP BY timestamp, server, host ORDER BY timestamp ASC"""
 
     connection_cursor.execute(query)
-    for triple in connection_cursor:
-        timestamp              = str(triple[0])
+    for db_tuple in connection_cursor:
+        timestamp              = str(db_tuple[0])
         timestamp_ymd          = timestamp.split()[0]
-        host                   = triple[1]
-        total_count_per_second = triple[2]
+        server                 = db_tuple[1]
+        host                   = db_tuple[2]
+        total_count_per_second = db_tuple[3]
 
-        json_map[timestamp_ymd][host] += total_count_per_second
+        server_host_mapping[server].add(host)
+        total_json_map[timestamp_ymd][server][dict_index] += total_count_per_second
 
-    # query = """SELECT timestamp, COUNT(pe.file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
-    #                """pe.dump_id = ams.dump_id AND pe.file_type = '""" + file_type + """' AND ams.score > """  + \
-    #                str(AMICO_THRESHOLD) + """ AND server = '""" + server + """' GROUP BY  timestamp ORDER """  +\
-    #                """BY timestamp ASC"""
-    #
-    # connection_cursor.execute(query)
-    # for tuple in connection_cursor:
-    #     timestamp              = str(tuple[0])
-    #     timestamp_ymd          = timestamp.split()[0]
-    #     total_count_per_second = tuple[1]
-    #
-    #     if timestamp_ymd in malware_map:
-    #         malware_map[timestamp_ymd] += total_count_per_second
-    #     else:
-    #         malware_map[timestamp_ymd] = total_count_per_second
+    query = """SELECT timestamp, server, COUNT(file_type) FROM pe_dumps AS pe, amico_scores AS ams WHERE """ + \
+                   """pe.dump_id = ams.dump_id AND pe.file_type = '""" + file_type + """' AND ams.score > """  + \
+                   str(AMICO_THRESHOLD) + """ AND server IS NOT NULL GROUP BY timestamp, server ORDER """  +\
+                   """BY timestamp ASC"""
 
-    return total_map, malware_map
+    connection_cursor.execute(query)
+    for db_tuple in connection_cursor:
+        timestamp              = str(db_tuple[0])
+        timestamp_ymd          = timestamp.split()[0]
+        server                 = db_tuple[1]
+        total_count_per_second = db_tuple[2]
+
+        malware_json_map[timestamp_ymd][server][dict_index] += total_count_per_second
 
     # monitoring_server_ip                      = "127.0.0.1"
     # external_server_ip                        = server
@@ -536,14 +544,112 @@ def perform_queries_on(connection, json_map, file_type):
     #         total_count_per_second = row[1]
     #
     #         dayID = timestamp.split()[0]
+    return server_host_mapping, total_json_map, malware_json_map
 
+
+def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_map):
+    final_json_object_list      = list()
+    sorted_total_json_map       = sorted(total_json_map.items(), key=operator.itemgetter(0))
+
+    for timestamp, servers_dictionary in sorted_total_json_map:
+        servers_dictionary_items = servers_dictionary.items()
+
+        external_server_dict_list                 = list()
+        final_json_object                         = dict()
+        final_json_object['Day']                  = UID
+        final_json_object['Monitoring Server IP'] = monitoring_server_ip
+
+        for server_ip, file_type_total_count_per_day_pair in servers_dictionary_items:
+            server_json_object = dict()
+            server_json_object[server_ip] = dict()
+
+            server_json_object[server_ip]['Total_APK'] = file_type_total_count_per_day_pair[APK_FILE_TYPE]
+            server_json_object[server_ip]['Total_DMG'] = file_type_total_count_per_day_pair[DMG_FILE_TYPE]
+            server_json_object[server_ip]['Total_ELF'] = file_type_total_count_per_day_pair[ELF_FILE_TYPE]
+            server_json_object[server_ip]['Total_EXE'] = file_type_total_count_per_day_pair[EXE_FILE_TYPE]
+            server_json_object[server_ip]['Total_PDF'] = file_type_total_count_per_day_pair[PDF_FILE_TYPE]
+            server_json_object[server_ip]['Total_SWF'] = file_type_total_count_per_day_pair[SWF_FILE_TYPE]
+            server_json_object[server_ip]['Total_JAR'] = file_type_total_count_per_day_pair[JAR_FILE_TYPE]
+            server_json_object[server_ip]['Total_RAR'] = file_type_total_count_per_day_pair[RAR_FILE_TYPE]
+            server_json_object[server_ip]['Total_ZIP'] = file_type_total_count_per_day_pair[ZIP_FILE_TYPE]
+
+            external_server_dict_list.append(server_json_object)
+
+        final_json_object['External Server IP list'] = external_server_dict_list
+        final_json_object['Timestamp']               = timestamp
+
+        computed_final_json_object = copy.deepcopy(final_json_object)
+        final_json_object_list.append(computed_final_json_object)
+
+        UID += 1
+
+    return final_json_object_list
 
 
 def generate_JSON_map_file():
-    connection        = util.connect_to_db()
-    json_map          = defaultdict(lambda: defaultdict(int))
+    connection           = util.connect_to_db()
+    csv_rows             = list()
+    dictionary_index     = 0
+    monitoring_server_ip = "127.0.0.1"
+    server_host_mapping  = defaultdict(set)
+    total_json_map       = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    malware_json_map     = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 
-    perform_queries_on(connection, json_map, "PDF")
+    created_json_file = OUT_DIR + "/" + str(MAP_GRAPH_ID) + "-downloads_" + \
+                        datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + ".json"
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "APK",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "DMG",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "ELF",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "EXE",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "PDF",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "SWF",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "JAR",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "RAR",
+                                                                               dictionary_index)
+    dictionary_index += 1
+
+    server_host_mapping, total_json_map, malware_json_map = perform_queries_on(connection, server_host_mapping,
+                                                                               total_json_map, malware_json_map, "ZIP",
+                                                                               dictionary_index)
+    dictionary_index += 1
+    UID = 0
+
+    JSON_object = encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_map)
+
+    # with open(created_json_file, "wb") as json_file:
+    #     json.dump(sorted_total_json_map, json_file)
+
+    dictionary_index = 2
 
 # def test_graph_generation():
 graph_id = MAP_GRAPH_ID
