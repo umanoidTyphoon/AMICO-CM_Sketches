@@ -628,7 +628,6 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
 
 def generate_JSON_map_file():
     connection           = util.connect_to_db()
-    csv_rows             = list()
     dictionary_index     = 0
     monitoring_server_ip = "127.0.0.1"
     server_host_mapping  = defaultdict(set)
@@ -686,8 +685,8 @@ def generate_JSON_map_file():
 
     JSON_object = encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_map)
 
-    # with open(created_json_file, "wb") as json_file:
-    #     json.dump(sorted_total_json_map, json_file)
+    with open(created_json_file, "wb") as json_file:
+        json.dump(JSON_object, json_file)
 
     dictionary_index = 2
 
