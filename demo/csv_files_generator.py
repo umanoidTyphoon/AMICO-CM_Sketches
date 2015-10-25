@@ -34,7 +34,17 @@ JAR_FILE_TYPE           = 6
 RAR_FILE_TYPE           = 7
 ZIP_FILE_TYPE           = 8
 
+TCPSTAT_TIMESTAMP_FIELD = 0
+RECEIVED_PACKETS_FIELD  = 1
+PACKET_AVG_SIZE_FIELD   = 2
+PACKET_SIZE_DEV_FIELD   = 3
+BANDWITDH_BPS_FIELD     = 4
+
 AMICO_THRESHOLD = 0.4
+IN_DIR  = "./in"
+IN_0    = "10_MIN_filtered_trace_2015-05-12_11_00_00.tcpstat"
+IN_1    = "1_HOUR_filtered_trace_2015-05-12_11_00_00.tcpstat"
+IN_2    = "filtered_trace_2015-05-12_00_46_12.tcpstat"
 OUT_DIR = "./out"
 
 
@@ -64,6 +74,7 @@ def format_row(value_list, max_values):
         value_list.append(0)
 
     return value_list
+
 
 def generate_CSV_download_file():
     connection = util.connect_to_db()
@@ -422,9 +433,7 @@ def generate_CSV_download_file():
             break
 
     max_values = len(header.split(',')) - 2
-    next_download_events = 0
     csv_rows = list()
-    csv_rows_list_size  = len(csv_rows)
     sorted_csv_map_aux = sorted(csv_map_aux.items(), key=operator.itemgetter(0))
     UID = 0
 
@@ -577,7 +586,10 @@ def geolocalize_from_ip(str_ip_address):
 
 
 def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_map):
+    control_server_list         = set()
     final_json_object_list      = list()
+    lat_lon_tuple_none_values   = 0
+    lat_lon_tuple_all_values    = 0
     sorted_total_json_map       = sorted(total_json_map.items(), key=operator.itemgetter(0))
 
     for timestamp, servers_dictionary in sorted_total_json_map:
@@ -589,6 +601,7 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
         final_json_object['Monitoring Server IP'] = monitoring_server_ip
 
         for server_ip, file_type_total_count_per_day_pair in servers_dictionary_items:
+            control_server_list.add(server_ip)
             server_json_object = dict()
             server_json_object[server_ip] = dict()
 
@@ -643,12 +656,15 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
             server_json_object[server_ip]['Malware_Count'] = malware_count_per_day
 
             lat_lon_tuple = geolocalize_from_ip(server_ip)
+            lat_lon_tuple_all_values += 1
             if lat_lon_tuple is not None:
                 if lat_lon_tuple[0] is None or lat_lon_tuple[1] is None:
                     server_json_object['Country']   = lat_lon_tuple[0]
                 if lat_lon_tuple[0] is not None and lat_lon_tuple[1] is not None:
                     server_json_object['Latitude']  = lat_lon_tuple[0]
                     server_json_object['Longitude'] = lat_lon_tuple[1]
+            else:
+                lat_lon_tuple_none_values += 1
 
             external_server_dict_list.append(server_json_object)
 
@@ -660,6 +676,9 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
 
         UID += 1
 
+    print "JSON file generator :: Number of servers processed:", len(control_server_list)
+    print "JSON file generator :: Number of coordinates NOT correctly computed: %d over %d"% (lat_lon_tuple_none_values,
+                                                                                              lat_lon_tuple_all_values)
     return final_json_object_list
 
 
@@ -725,6 +744,38 @@ def generate_JSON_map_file():
     with open(created_json_file, "wb") as json_file:
         json.dump(JSON_object, json_file)
 
+
+def generate_CSV_traffic_file():
+    tcpstat_file     = open(IN_DIR + "/" + IN_2, "r")
+    header_list      = ["Second_ID", "Bandwidth_[bps]", "Timestamp", "Tcpstat_Timestamp", "Received_Packets",
+                        "Packet_Average_Size", "Packet_Size_Standard_Deviation"]
+    created_csv_file = OUT_DIR + "/" + str(TRAFFIC_GRAPH_ID) + "-downloads_" + \
+                       datetime.fromtimestamp(time()).strftime('%Y-%m-%d_%H-%M-%S') + ".csv"
+
+    UID = 0
+    with open(created_csv_file, "wb") as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(header_list)
+        for tcpstat_line in tcpstat_file.readlines():
+            formatted_row      = list()
+            tcpstat_line_split = tcpstat_line.split("\t")
+
+            bps                = ((tcpstat_line_split[BANDWITDH_BPS_FIELD].split("="))[1]).rstrip()
+            tcpstat_timestamp  = (tcpstat_line_split[TCPSTAT_TIMESTAMP_FIELD].split(":"))[1]
+            timestamp          = datetime.fromtimestamp(int(tcpstat_timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+            rcv_packets        = (tcpstat_line_split[RECEIVED_PACKETS_FIELD].split("="))[1]
+            packet_avg_size    = (tcpstat_line_split[PACKET_AVG_SIZE_FIELD].split("="))[1]
+            packet_std_dev     = (tcpstat_line_split[PACKET_SIZE_DEV_FIELD].split("="))[1]
+
+            formatted_row.append(UID); formatted_row.append(bps); formatted_row.append(timestamp);
+            formatted_row.append(tcpstat_timestamp); formatted_row.append(rcv_packets);
+            formatted_row.append(packet_avg_size); formatted_row.append(packet_std_dev);
+
+            csv_writer.writerow(formatted_row)
+            UID += 1
+
+
 # def test_graph_generation():
-graph_id = MAP_GRAPH_ID
+
+graph_id = TRAFFIC_GRAPH_ID
 generate_graph(graph_id)
