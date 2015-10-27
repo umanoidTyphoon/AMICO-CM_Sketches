@@ -123,7 +123,6 @@ def classify_dump(dump_id):
             "> test.result" % ("default.model",), shell=True)
 
     score = None
-    score_sketch = None
     with open('test.result', 'r') as f:
         for line in f:
             if ':' in line:
@@ -137,8 +136,6 @@ def classify_dump(dump_id):
 
     # subprocess.call("rm test.arff", shell=True)
     # subprocess.call("rm test.result", shell=True)
-
-    # util.update_results(score, score_sketch)
 
 if __name__ == "__main__":
     dump_id = int(sys.argv[1])
