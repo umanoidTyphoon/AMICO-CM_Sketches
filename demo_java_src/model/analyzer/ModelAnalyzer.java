@@ -3,17 +3,21 @@ package model.analyzer;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
+import weka.classifiers.Classifier;
 import weka.classifiers.meta.Bagging;
 import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.RandomForest;
+import weka.classifiers.trees.RandomTree;
 
 public class ModelAnalyzer {
 	
 	public static final String INPUT_DIR = System.getProperty("user.dir") + 
 										   "/demo/model_analysis";
+	public static final String OUTPUT_DIR = INPUT_DIR + "/out";
 	private String input_model = null; 
 	
 	public FilteredClassifier loadFilteredClassifier(String input_model) {
@@ -32,12 +36,17 @@ public class ModelAnalyzer {
 		return fc;
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		ModelAnalyzer analyzer 		  		  = new ModelAnalyzer();
 		FilteredClassifier filteredClassifier = analyzer.loadFilteredClassifier("default.model");
 		RandomForest classifier		          = (RandomForest) filteredClassifier.getClassifier();
-		Bagging m_bagger = analyzer.getRandomForest(classifier);
+		Bagging m_bagger 					  = analyzer.getRandomForest(classifier);
+		Classifier[] m_baggerRandomTrees	  = analyzer.getRandomTrees(m_bagger);
 		
+		analyzer.writeStats(m_bagger, m_baggerRandomTrees);
+		
+		/* DEBUG prints
+		  
 		System.out.println("-------------------------------------------------------------" +
 						   " FILTERED CLASSIFIER DESCRIPTION "	 						   +	
 						   "-------------------------------------------------------------" );
@@ -68,6 +77,62 @@ public class ModelAnalyzer {
 						   "---------------------------------"	 						   +	
 		   		   		   "-------------------------------------------------------------" );
 		
+		RandomTree rTree = null;
+		for (Classifier randomTreeClassifier : m_baggerRandomTrees)
+			 rTree = (RandomTree) randomTreeClassifier;
+			 System.out.println("-------------------------------------------------------------" +
+		   		   				" RANDOM TREE AS A GRAPH "				 				        +	
+		   		   				"-------------------------------------------------------------" );
+			 System.out.println(rTree.graph());
+			 System.out.println("-------------------------------------------------------------" +
+					 			"---------------------------------"	 						    +	
+		   		   				"-------------------------------------------------------------" );*/
+		
+		
+		
+	}
+
+	private void writeStats(Bagging m_bagger, Classifier[] randomTrees) {
+		String filename 	= new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss").format(new Date());
+		String filename2 	= new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss").format(new Date());
+		filename 			= "3.0-random_trees-" + filename  + ".txt";
+		filename2 			= "3.1-random_trees_graph-" + filename2 + ".txt";
+		filename			= OUTPUT_DIR + "/" + filename;
+		filename2			= OUTPUT_DIR + "/" + filename2;
+		PrintWriter pWriter = null;
+		RandomTree rTree 	= null;
+		String graphs		= "";
+		
+		try {
+			pWriter = new PrintWriter(filename);
+			pWriter.println(m_bagger.toString());
+			pWriter.close();
+			
+			pWriter = new PrintWriter(filename2);
+			for (Classifier randomTreeClassifier : randomTrees){
+				 rTree = (RandomTree) randomTreeClassifier;
+				 graphs += rTree.graph() + "\n\n";
+			}
+			pWriter.println(graphs);
+			pWriter.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+	}
+
+	private Classifier[] getRandomTrees(Bagging m_bagger) {
+		Classifier[] randomTrees = null; 
+		try {
+			randomTrees = m_bagger.get_m_Classifiers();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return randomTrees;
 	}
 
 	private Bagging getRandomForest(RandomForest classifier) {
