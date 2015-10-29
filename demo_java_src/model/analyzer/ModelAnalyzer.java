@@ -3,7 +3,10 @@ package model.analyzer;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
+import weka.classifiers.meta.Bagging;
 import weka.classifiers.meta.FilteredClassifier;
 import weka.classifiers.trees.RandomForest;
 
@@ -30,9 +33,10 @@ public class ModelAnalyzer {
 	}
 
 	public static void main(String[] args) {
-		ModelAnalyzer analyzer 		  = new ModelAnalyzer();
+		ModelAnalyzer analyzer 		  		  = new ModelAnalyzer();
 		FilteredClassifier filteredClassifier = analyzer.loadFilteredClassifier("default.model");
 		RandomForest classifier		          = (RandomForest) filteredClassifier.getClassifier();
+		Bagging m_bagger = analyzer.getRandomForest(classifier);
 		
 		System.out.println("-------------------------------------------------------------" +
 						   " FILTERED CLASSIFIER DESCRIPTION "	 						   +	
@@ -53,6 +57,29 @@ public class ModelAnalyzer {
 						   "---------------------------------"	 						   +	
 		   		   		   "-------------------------------------------------------------" );
 		
+		
+		
+		System.out.println("-------------------------------------------------------------" +
+		   		   		   " RANDOM FOREST BAGGER DESCRIPTION "	 				       +	
+		   		   		   "-------------------------------------------------------------" );
+		System.out.println(m_bagger);
+
+		System.out.println("-------------------------------------------------------------" +
+						   "---------------------------------"	 						   +	
+		   		   		   "-------------------------------------------------------------" );
+		
 	}
 
+	private Bagging getRandomForest(RandomForest classifier) {
+		Bagging m_bagger = null;
+		try {
+			m_bagger = classifier.getMBagger();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return m_bagger;
+	}
+	
 }
