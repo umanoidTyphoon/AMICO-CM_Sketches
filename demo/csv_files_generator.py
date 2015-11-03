@@ -602,8 +602,9 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
 
         for server_ip, file_type_total_count_per_day_pair in servers_dictionary_items:
             control_server_list.add(server_ip)
-            server_json_object = dict()
-            server_json_object[server_ip] = dict()
+            server_json_object              = dict()
+            server_json_object['Server IP'] = server_ip
+            server_json_object['Downloads'] = dict()
 
             apk_total_count_per_day = file_type_total_count_per_day_pair[APK_FILE_TYPE]
             dmg_total_count_per_day = file_type_total_count_per_day_pair[DMG_FILE_TYPE]
@@ -633,27 +634,27 @@ def encode_data_as_JSON(UID, monitoring_server_ip, total_json_map, malware_json_
                                     exe_malware_count_per_day + pdf_malware_count_per_day + swf_malware_count_per_day + \
                                     jar_malware_count_per_day + rar_malware_count_per_day + zip_malware_count_per_day
 
-            server_json_object[server_ip]['Total_APK']     = apk_total_count_per_day
-            server_json_object[server_ip]['Total_DMG']     = dmg_total_count_per_day
-            server_json_object[server_ip]['Total_ELF']     = elf_total_count_per_day
-            server_json_object[server_ip]['Total_EXE']     = exe_total_count_per_day
-            server_json_object[server_ip]['Total_PDF']     = pdf_total_count_per_day
-            server_json_object[server_ip]['Total_SWF']     = swf_total_count_per_day
-            server_json_object[server_ip]['Total_JAR']     = jar_total_count_per_day
-            server_json_object[server_ip]['Total_RAR']     = rar_total_count_per_day
-            server_json_object[server_ip]['Total_ZIP']     = zip_total_count_per_day
-            server_json_object[server_ip]['Total_Count']   = total_count_per_day
+            server_json_object['Downloads']['Total_APK']     = apk_total_count_per_day
+            server_json_object['Downloads']['Total_DMG']     = dmg_total_count_per_day
+            server_json_object['Downloads']['Total_ELF']     = elf_total_count_per_day
+            server_json_object['Downloads']['Total_EXE']     = exe_total_count_per_day
+            server_json_object['Downloads']['Total_PDF']     = pdf_total_count_per_day
+            server_json_object['Downloads']['Total_SWF']     = swf_total_count_per_day
+            server_json_object['Downloads']['Total_JAR']     = jar_total_count_per_day
+            server_json_object['Downloads']['Total_RAR']     = rar_total_count_per_day
+            server_json_object['Downloads']['Total_ZIP']     = zip_total_count_per_day
+            server_json_object['Downloads']['Total_Count']   = total_count_per_day
 
-            server_json_object[server_ip]['Malware_APK']   = apk_malware_count_per_day
-            server_json_object[server_ip]['Malware_DMG']   = dmg_malware_count_per_day
-            server_json_object[server_ip]['Malware_ELF']   = elf_malware_count_per_day
-            server_json_object[server_ip]['Malware_EXE']   = exe_malware_count_per_day
-            server_json_object[server_ip]['Malware_PDF']   = pdf_malware_count_per_day
-            server_json_object[server_ip]['Malware_SWF']   = swf_malware_count_per_day
-            server_json_object[server_ip]['Malware_JAR']   = jar_malware_count_per_day
-            server_json_object[server_ip]['Malware_RAR']   = rar_malware_count_per_day
-            server_json_object[server_ip]['Malware_ZIP']   = zip_malware_count_per_day
-            server_json_object[server_ip]['Malware_Count'] = malware_count_per_day
+            server_json_object['Downloads']['Malware_APK']   = apk_malware_count_per_day
+            server_json_object['Downloads']['Malware_DMG']   = dmg_malware_count_per_day
+            server_json_object['Downloads']['Malware_ELF']   = elf_malware_count_per_day
+            server_json_object['Downloads']['Malware_EXE']   = exe_malware_count_per_day
+            server_json_object['Downloads']['Malware_PDF']   = pdf_malware_count_per_day
+            server_json_object['Downloads']['Malware_SWF']   = swf_malware_count_per_day
+            server_json_object['Downloads']['Malware_JAR']   = jar_malware_count_per_day
+            server_json_object['Downloads']['Malware_RAR']   = rar_malware_count_per_day
+            server_json_object['Downloads']['Malware_ZIP']   = zip_malware_count_per_day
+            server_json_object['Downloads']['Malware_Count'] = malware_count_per_day
 
             lat_lon_tuple = geolocalize_from_ip(server_ip)
             lat_lon_tuple_all_values += 1
@@ -777,5 +778,5 @@ def generate_CSV_traffic_file():
 
 # def test_graph_generation():
 
-graph_id = TRAFFIC_GRAPH_ID
+graph_id = MAP_GRAPH_ID
 generate_graph(graph_id)
