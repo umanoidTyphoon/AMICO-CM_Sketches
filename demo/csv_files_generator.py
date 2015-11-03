@@ -777,6 +777,5 @@ def generate_CSV_traffic_file():
 
 
 # def test_graph_generation():
-
 graph_id = MAP_GRAPH_ID
 generate_graph(graph_id)
