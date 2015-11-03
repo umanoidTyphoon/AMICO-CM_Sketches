@@ -775,6 +775,7 @@ def generate_CSV_traffic_file():
             csv_writer.writerow(formatted_row)
             UID += 1
 
+
 # def test_graph_generation():
 
 graph_id = MAP_GRAPH_ID
