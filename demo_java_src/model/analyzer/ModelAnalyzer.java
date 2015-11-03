@@ -1,6 +1,8 @@
 package model.analyzer;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.PrintWriter;
@@ -15,10 +17,13 @@ import weka.classifiers.trees.RandomTree;
 
 public class ModelAnalyzer {
 	
-	public static final String INPUT_DIR = System.getProperty("user.dir") + 
+	private static final String INPUT_DIR  = System.getProperty("user.dir") + 
 										   "/demo/model_analysis";
-	public static final String OUTPUT_DIR = INPUT_DIR + "/out";
-	private String input_model = null; 
+	private static final String OUTPUT_DIR = INPUT_DIR + "/out";
+	
+	private static final String TEST_FILE  = OUTPUT_DIR + "/" + "3.0-random_trees-test.txt";
+	
+	private String input_model = null;
 	
 	public FilteredClassifier loadFilteredClassifier(String input_model) {
 		this.input_model      = INPUT_DIR + "/" + input_model;
@@ -43,7 +48,8 @@ public class ModelAnalyzer {
 		Bagging m_bagger 					  = analyzer.getRandomForest(classifier);
 		Classifier[] m_baggerRandomTrees	  = analyzer.getRandomTrees(m_bagger);
 		
-		analyzer.writeStats(m_bagger, m_baggerRandomTrees);
+		// analyzer.writeStats(m_bagger, m_baggerRandomTrees);
+		analyzer.writeFormattedStats(new BufferedReader(new FileReader(TEST_FILE)));
 		
 		/* DEBUG prints
 		  
@@ -87,9 +93,31 @@ public class ModelAnalyzer {
 			 System.out.println("-------------------------------------------------------------" +
 					 			"---------------------------------"	 						    +	
 		   		   				"-------------------------------------------------------------" );*/
+	}
+
+	private void writeFormattedStats(BufferedReader br) {
+		String line	= null;
 		
-		
-		
+		try {
+			do {
+				line = br.readLine();
+				boolean termination_condition_0 = line.startsWith("Random"); 
+				boolean termination_condition_1 = line.startsWith("=");
+				boolean termination_condition_2 = line.equals("");
+				boolean termination_condition_3 = line.startsWith("Size");
+				
+				if(termination_condition_0 || termination_condition_1 ||
+				   termination_condition_2 || termination_condition_3){
+					continue;
+				}
+				String formattedLine = line.replaceAll(" |", "");
+				// Left children
+				if (formattedLine.contains("<"));
+			}while(line != null);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	private void writeStats(Bagging m_bagger, Classifier[] randomTrees) {
@@ -119,8 +147,6 @@ public class ModelAnalyzer {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
 	}
 
 	private Classifier[] getRandomTrees(Bagging m_bagger) {
