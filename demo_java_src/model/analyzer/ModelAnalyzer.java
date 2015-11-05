@@ -18,7 +18,6 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
-import jdk.nashorn.api.scripting.JSObject;
 import weka.classifiers.Classifier;
 import weka.classifiers.meta.Bagging;
 import weka.classifiers.meta.FilteredClassifier;
@@ -27,8 +26,6 @@ import weka.classifiers.trees.RandomForest;
 public class ModelAnalyzer {
 	
 	private static final int  DEBUG        = 0;
-	private static final int  LEFT_CHILD   = 0;
-	private static final int  RIGHT_CHILD  = 1;
 	
 	private static final int  BRANCH_POS   = 0;
 	private static final int  FEATURE_POS  = 1;
@@ -118,10 +115,21 @@ public class ModelAnalyzer {
 			analyzer.writeFormattedStats(new BufferedReader(new FileReader(TEST_FILE)));
 		}
 	}
+	
+	public static boolean isNumeric(String s) {
+		try {  
+			Double.parseDouble(s);  
+		}  
+		catch(NumberFormatException nfe) {  
+			return false;  
+		}  
+		return true;  
+	}
 
 	private void writeFormattedStats(BufferedReader br) {
 		String line	  = null;
 		int max_level = -1;
+		Integer UID	  = 1;
 		Map<String,List<String>> branch_map = new TreeMap<String, List<String>>();
 		Map<String,List<String>> gen_map    = new TreeMap<String, List<String>>();
 		Map<String, String> split_point_map = new HashMap<String, String>();	 
@@ -185,6 +193,11 @@ public class ModelAnalyzer {
 					String parent_feature 	 = child.split(" ")[PARENT_POS].split(":")[VALUE_POS];
 					String child_split_point = child.split(" ")[SPLIT_POS].split(":")[VALUE_POS]; 
 					
+					if(gen_map.keySet().contains(child_feature)) {
+					   child_feature += "_" + UID.toString();
+					   UID++;
+					}
+					
 					List<String> children 	 = gen_map.get(parent_feature);
 					children.add(child_feature);
 					split_point_map.put(child_feature, child_split_point);
@@ -213,7 +226,17 @@ public class ModelAnalyzer {
 				   String child_feature       = childrenToProcess.remove(0);
 				   List<String> childChildren = gen_map.get(child_feature);
 				   childrenToProcess.addAll(childChildren);
-					
+				   
+				   String[] child_feature_split = child_feature.split("_");
+				   String last_ID = child_feature_split[(child_feature_split.length - 1)];
+				   
+				   if (isNumeric(last_ID)){
+					   child_feature = "";
+					   for (int i = 0; i < child_feature_split.length - 1; i++) {
+						    child_feature += child_feature_split[i];
+					   }
+				   }
+				   
 				   JSONArray jsonChildChildren = new JSONArray(childChildren);
 				   childJSONObj.put("Feature", child_feature);
 				   childJSONObj.put("Split Point", split_point_map.get(child_feature));
