@@ -123,7 +123,8 @@ public class ModelAnalyzer {
 		String line	  = null;
 		int max_level = -1;
 		Map<String,List<String>> branch_map = new TreeMap<String, List<String>>();
-		Map<String,List<String>> gen_map = new TreeMap<String, List<String>>();
+		Map<String,List<String>> gen_map    = new TreeMap<String, List<String>>();
+		Map<String, String> split_point_map = new HashMap<String, String>();	 
 		
 		try {
 			line = br.readLine();
@@ -172,18 +173,21 @@ public class ModelAnalyzer {
 			String root_feature			     = rootChildrenNodes.get(0).split(" ")[FEATURE_POS].split(":")[VALUE_POS];
 			String root_split_point			 = rootChildrenNodes.get(0).split(" ")[SPLIT_POS].split(":")[VALUE_POS];
 			gen_map.put(root_feature, new ArrayList<String>());
+			split_point_map.put(root_feature, root_split_point);
 
 			for(int i = 1; i <= max_level; i++) {
 				String key = "Branch_";
 				key 	  += i;
 				List<String> rTreeNodes = branch_map.get(key);
 				for (int j = 0; j < rTreeNodes.size(); j++) {
-					String child 		   = rTreeNodes.get(j++);
-					String child_feature  = child.split(" ")[FEATURE_POS].split(":")[VALUE_POS];
-					String parent_feature = child.split(" ")[PARENT_POS].split(":")[VALUE_POS];
-
-					List<String> children = gen_map.get(parent_feature);
+					String child 		     = rTreeNodes.get(j++);
+					String child_feature  	 = child.split(" ")[FEATURE_POS].split(":")[VALUE_POS];
+					String parent_feature 	 = child.split(" ")[PARENT_POS].split(":")[VALUE_POS];
+					String child_split_point = child.split(" ")[SPLIT_POS].split(":")[VALUE_POS]; 
+					
+					List<String> children 	 = gen_map.get(parent_feature);
 					children.add(child_feature);
+					split_point_map.put(child_feature, child_split_point);
 
 					gen_map.put(child_feature, new ArrayList<String>());
 				}
@@ -212,14 +216,20 @@ public class ModelAnalyzer {
 					
 				   JSONArray jsonChildChildren = new JSONArray(childChildren);
 				   childJSONObj.put("Feature", child_feature);
-				   childJSONObj.put("Split Point", root_split_point);
+				   childJSONObj.put("Split Point", split_point_map.get(child_feature));
 				   childJSONObj.put("Children", jsonChildChildren);
 			}
 			
-			System.out.println(jsonObjArray[5].toString());
+			printJSONObjectArray(jsonObjArray);
 		} catch (IOException | JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+
+	private void printJSONObjectArray(JSONObject[] jsonObjArray) {
+		for (JSONObject jsonObject: jsonObjArray){
+			 System.out.println(jsonObject.toString());
 		}
 	}
 
