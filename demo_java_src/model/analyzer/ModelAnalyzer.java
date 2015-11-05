@@ -14,6 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+
+import jdk.nashorn.api.scripting.JSObject;
 import weka.classifiers.Classifier;
 import weka.classifiers.meta.Bagging;
 import weka.classifiers.meta.FilteredClassifier;
@@ -25,9 +30,12 @@ public class ModelAnalyzer {
 	private static final int  LEFT_CHILD   = 0;
 	private static final int  RIGHT_CHILD  = 1;
 	
+	private static final int  BRANCH_POS   = 0;
 	private static final int  FEATURE_POS  = 1;
-	private static final int  PARENT_POS   = 2;
-	private static final int  SPLIT_POS    = 3;
+	private static final int  LEVEL_POS    = 1;
+	private static final int  SPLIT_POS    = 2;
+	private static final int  PARENT_POS   = 3;
+	private static final int  VALUE_POS	   = 1;
 	
 	private static final String INPUT_DIR  = System.getProperty("user.dir") + 
 										   "/demo/model_analysis";
@@ -115,6 +123,7 @@ public class ModelAnalyzer {
 		String line	  = null;
 		int max_level = -1;
 		Map<String,List<String>> branch_map = new TreeMap<String, List<String>>();
+		Map<String,List<String>> gen_map = new TreeMap<String, List<String>>();
 		
 		try {
 			line = br.readLine();
@@ -133,9 +142,9 @@ public class ModelAnalyzer {
 				// String formattedLine = line.replaceAll(" |", "");
 				
 				String[] line_split   = line.split(" ");
-				String[] branch_split = line_split[0].split(":");
-				String branch_ID	  = branch_split[0];
-				int level			  = Integer.parseInt(branch_ID.split("_")[1]);
+				String[] branch_split = line_split[BRANCH_POS].split(":");
+				String branch_ID	  = branch_split[BRANCH_POS];
+				int level			  = Integer.parseInt(branch_ID.split("_")[LEVEL_POS]);
 				max_level 			  = (level > max_level) ? level : max_level;
 				String child 		  = branch_split[1];
 				String feature_String = "";
@@ -156,37 +165,62 @@ public class ModelAnalyzer {
 				}
 				line = br.readLine();
 			}
-		} catch (IOException e) {
+			System.out.println(branch_map);
+
+			List<String> rootChildrenNodes	 = branch_map.get("Branch_0");
+			// ASSUMPTION: the root is not a leaf...
+			String root_feature			     = rootChildrenNodes.get(0).split(" ")[FEATURE_POS].split(":")[VALUE_POS];
+			String root_split_point			 = rootChildrenNodes.get(0).split(" ")[SPLIT_POS].split(":")[VALUE_POS];
+			gen_map.put(root_feature, new ArrayList<String>());
+
+			for(int i = 1; i <= max_level; i++) {
+				String key = "Branch_";
+				key 	  += i;
+				List<String> rTreeNodes = branch_map.get(key);
+				for (int j = 0; j < rTreeNodes.size(); j++) {
+					String child 		   = rTreeNodes.get(j++);
+					String child_feature  = child.split(" ")[FEATURE_POS].split(":")[VALUE_POS];
+					String parent_feature = child.split(" ")[PARENT_POS].split(":")[VALUE_POS];
+
+					List<String> children = gen_map.get(parent_feature);
+					children.add(child_feature);
+
+					gen_map.put(child_feature, new ArrayList<String>());
+				}
+			}
+			System.out.println(gen_map);
+			JSONArray children 		  = null;
+			JSONObject[] jsonObjArray = new JSONObject[gen_map.keySet().size()];
+			for (int i = 0; i < jsonObjArray.length; i++)
+				 jsonObjArray[i] = new JSONObject();
+			
+			int jsonObjArrayIndex		   = 1;
+			JSONObject rootJSONObj    	   = jsonObjArray[0];
+			List<String> rootChildren 	   = gen_map.get(root_feature);
+			List<String> childrenToProcess = new ArrayList<String>(rootChildren);
+			
+			children = new JSONArray(rootChildren);
+			rootJSONObj.put("Feature", root_feature);
+			rootJSONObj.put("Split Point", root_split_point);
+			rootJSONObj.put("Children", children);
+			
+			while(!childrenToProcess.isEmpty()) {
+				   JSONObject childJSONObj    = jsonObjArray[jsonObjArrayIndex++];
+				   String child_feature       = childrenToProcess.remove(0);
+				   List<String> childChildren = gen_map.get(child_feature);
+				   childrenToProcess.addAll(childChildren);
+					
+				   JSONArray jsonChildChildren = new JSONArray(childChildren);
+				   childJSONObj.put("Feature", child_feature);
+				   childJSONObj.put("Split Point", root_split_point);
+				   childJSONObj.put("Children", jsonChildChildren);
+			}
+			
+			System.out.println(jsonObjArray[5].toString());
+		} catch (IOException | JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		System.out.println(branch_map);
-		
-		Map<String,List<String>> gen_map = new TreeMap<String, List<String>>();
-		List<String> rootChildrenNodes	 = branch_map.get("Branch_0");
-		// Do per assunto che la radice non è una foglia...
-		String root_feature			     = rootChildrenNodes.get(0).split(" ")[1].split(":")[1];
-		String root_split_point			 = rootChildrenNodes.get(0).split(" ")[3].split(":")[1];
-		gen_map.put(root_feature, new ArrayList<String>());
-		
-		for(int i = 1; i <= max_level; i++) {
-			String key = "Branch_";
-			key 	  += i;
-			List<String> rTreeNodes = branch_map.get(key);
-			System.out.println(i);
-			for (int j = 0; j < rTreeNodes.size(); j++) {
-				 String child 		   = rTreeNodes.get(j++);
-				 String child_feature  = child.split(" ")[1].split(":")[1];
-				 String parent_feature = child.split(" ")[2].split(":")[1];
-				 //TODO Manca lo split point per le extension class features
-				 
-				 List<String> children = gen_map.get(parent_feature);
-				 children.add(child_feature);
-				 
-				 gen_map.put(child_feature, new ArrayList<String>());
-			}
-		}
-		System.out.println(gen_map);
 	}
 
 	private void writeStats(Bagging m_bagger, Classifier[] randomTrees) {
