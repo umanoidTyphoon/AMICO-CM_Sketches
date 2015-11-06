@@ -27,11 +27,15 @@ public class ModelAnalyzer {
 	
 	private static final int  DEBUG        = 0;
 	
-	private static final int  BRANCH_POS   = 0;
+	private static final int  EDGE_POS 	   = 0;
+	private static final int  HASHCODE_POS = 0;
+	private static final int  PARENT_POS   = 0;
+	private static final int  CHILD_POS    = 1;
 	private static final int  FEATURE_POS  = 1;
+	private static final int  LABEL_POS    = 1;
+	private static final int  LEAF_POS     = 1;
 	private static final int  LEVEL_POS    = 1;
-	private static final int  SPLIT_POS    = 2;
-	private static final int  PARENT_POS   = 3;
+	private static final int  SPLIT_POS    = 1;
 	private static final int  VALUE_POS	   = 1;
 	
 	private static final String INPUT_DIR  = System.getProperty("user.dir") + 
@@ -112,7 +116,7 @@ public class ModelAnalyzer {
 			   		   				"-------------------------------------------------------------" );*/
 		}
 		else {
-			analyzer.writeFormattedStats(new BufferedReader(new FileReader(TEST_FILE)));
+			analyzer.writeFormattedStats(new FileReader(TEST_FILE));
 		}
 	}
 	
@@ -126,16 +130,23 @@ public class ModelAnalyzer {
 		return true;  
 	}
 
-	private void writeFormattedStats(BufferedReader br) {
-		String line	  = null;
-		int max_level = -1;
-		Integer UID	  = 1;
-		Map<String,List<String>> branch_map = new TreeMap<String, List<String>>();
-		Map<String,List<String>> gen_map    = new TreeMap<String, List<String>>();
-		Map<String, String> split_point_map = new HashMap<String, String>();	 
+	private void writeFormattedStats(FileReader fr) {
+		int line_ID 		= 0;
+		String line			= null;
+		String rootHashCode = null;
+		/*int max_level = -1;
+		Map<String,List<String>> branch_map    = new TreeMap<String, List<String>>();
+		Map<String,List<String>> gen_map       = new TreeMap<String, List<String>>();
+		Map<String, String> split_point_map    = new HashMap<String, String>();
+		Map<String,List<String>> leaf_node_map = new HashMap<String, List<String>>();*/
+		Map<String,String> hashcode_label_mapping   = new HashMap<String, String>();
+		Map<String,String> edge_split_point_mapping = new HashMap<String, String>();
+		Map<String,List<String>> edge_map		    = new HashMap<String,List<String>>();
 		
 		try {
-			line = br.readLine();
+			BufferedReader br = new BufferedReader(fr);
+			line 			  = br.readLine();
+			 
 			while(line != null) {
 				boolean termination_condition_0 = line.startsWith("Random"); 
 				boolean termination_condition_1 = line.startsWith("=");
@@ -144,21 +155,112 @@ public class ModelAnalyzer {
 				
 				if(termination_condition_0 || termination_condition_1 ||
 				   termination_condition_2 || termination_condition_3){
-					line = br.readLine();
-					continue;
+				   line = br.readLine();
+				   continue;
 				}
-				// Commented out because of old format
-				// String formattedLine = line.replaceAll(" |", "");
-				
-				String[] line_split   = line.split(" ");
+				/** Lines are in the following form:
+				 * 
+				 *  1 - N$RANDOM_TREE_NODE_HASHCODE$ [label="$LABEL$"]
+				 *  2 - N$RANDOM_TREE_NODE_HASHCODE$->N$RANDOM_TREE_NODE_HASHCODE$ [label="$SPLIT_POINT$"]
+				 *  E.g.:
+				 *  1 - N5010be6 [label="1: twold_benign_ratio"]
+				 *  2 - N5010be6->N685f4c2e [label=" < 0.12"] 
+				 */
+				if ((line_ID++ & 1) == 0 ) {// line_ID is even
+					 String[] lineSplit  = line.split(" ");
+					 String[] labelSplit = null;
+					 String hashCode     = lineSplit[HASHCODE_POS];
+					 if (line_ID == 1)
+						 rootHashCode = hashCode;
+					 String label		 = "";
+					 
+					 for (int i = 1; i < lineSplit.length; i++) {
+						  label += lineSplit[i];
+					 }
+					 
+					 labelSplit     = label.split("\"");
+					 String feature = labelSplit[FEATURE_POS];
+					 
+					 hashcode_label_mapping.put(hashCode, feature);
+			    }
+				else {// line_ID is odd
+					 String[] lineSplit  = line.split(" ");
+					 String[] labelSplit = null;
+					 String edge     	 = lineSplit[EDGE_POS];
+					 String[] edgeSplit  = edge.split("->");
+					 String parent       = edgeSplit[PARENT_POS];
+					 String child        = edgeSplit[CHILD_POS];
+					 String label		 = "";
+					 
+					 for (int i = 1; i < lineSplit.length; i++) {
+						  label += lineSplit[i];
+					 }
+					 
+					 labelSplit     = label.split("\"");
+					 String split   = labelSplit[SPLIT_POS];
+					 
+					 if (edge_map.containsKey(parent)) {
+						 List<String> children = edge_map.get(parent);
+						 children.add(child);
+					 }
+					 else {
+						 List<String> children = new ArrayList<String>();
+						 children.add(child);
+						 edge_map.put(parent, children);	
+					 }
+					 edge_split_point_mapping.put(edge, split);
+				}
+				line = br.readLine();
+			}
+			System.out.println(hashcode_label_mapping);
+			System.out.println(edge_map);
+			System.out.println(edge_split_point_mapping);
+			
+			JSONArray children 		  = null;
+			JSONObject[] jsonObjArray = new JSONObject[hashcode_label_mapping.keySet().size()];
+			for (int i = 0; i < jsonObjArray.length; i++)
+				 jsonObjArray[i] = new JSONObject();
+			
+			int jsonObjArrayIndex		   = 1;
+			JSONObject rootJSONObj    	   = jsonObjArray[0];
+			List<String> rootChildren 	   = edge_map.get(rootHashCode);
+			for (int i = 0; i < rootChildren.size(); i++) {
+				 rootChildren.set(i, hashcode_label_mapping.get(rootChildren.get(i)));
+			}
+			
+ 			List<String> childrenToProcess = new ArrayList<String>(rootChildren);
+			
+			children = new JSONArray(rootChildren);
+			rootJSONObj.put("Feature", hashcode_label_mapping.get(rootHashCode));
+			rootJSONObj.put("Split Point", "null");
+			rootJSONObj.put("Children", children);
+			
+			while(!childrenToProcess.isEmpty()) {
+				   JSONObject childJSONObj    = jsonObjArray[jsonObjArrayIndex++];
+				   String child_feature       = childrenToProcess.remove(0);
+				   List<String> childChildren = null;
+				   childrenToProcess.addAll(childChildren);
+				   
+				   JSONArray jsonChildChildren = new JSONArray(childChildren);
+				   childJSONObj.put("Feature", child_feature);
+				   childJSONObj.put("Split Point", "null");
+				   childJSONObj.put("Children", jsonChildChildren);
+			}
+		} catch (IOException | JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+		}
+
+		
+				/*String[] line_split   = line.split(" ");
 				String[] branch_split = line_split[BRANCH_POS].split(":");
 				String branch_ID	  = branch_split[BRANCH_POS];
 				int level			  = Integer.parseInt(branch_ID.split("_")[LEVEL_POS]);
 				max_level 			  = (level > max_level) ? level : max_level;
-				String child 		  = branch_split[1];
+				String child 		  = branch_split[VALUE_POS];
 				String feature_String = "";
 				 
-				feature_String 	  += child + " ";
+				feature_String += child + " ";
 				for (int i = 1; i < line_split.length; i++) {
 					 feature_String += line_split[i] + " ";
 				}
@@ -178,7 +280,8 @@ public class ModelAnalyzer {
 
 			List<String> rootChildrenNodes	 = branch_map.get("Branch_0");
 			// ASSUMPTION: the root is not a leaf...
-			String root_feature			     = rootChildrenNodes.get(0).split(" ")[FEATURE_POS].split(":")[VALUE_POS];
+			String id					     = rootChildrenNodes.get(0).split(" ")[NODE_ID_POS].split(":")[VALUE_POS];
+			String root_feature			     = id + "_" + rootChildrenNodes.get(0).split(" ")[FEATURE_POS].split(":")[VALUE_POS];
 			String root_split_point			 = rootChildrenNodes.get(0).split(" ")[SPLIT_POS].split(":")[VALUE_POS];
 			gen_map.put(root_feature, new ArrayList<String>());
 			split_point_map.put(root_feature, root_split_point);
@@ -188,24 +291,40 @@ public class ModelAnalyzer {
 				key 	  += i;
 				List<String> rTreeNodes = branch_map.get(key);
 				for (int j = 0; j < rTreeNodes.size(); j++) {
-					String child 		     = rTreeNodes.get(j++);
-					String child_feature  	 = child.split(" ")[FEATURE_POS].split(":")[VALUE_POS];
-					String parent_feature 	 = child.split(" ")[PARENT_POS].split(":")[VALUE_POS];
-					String child_split_point = child.split(" ")[SPLIT_POS].split(":")[VALUE_POS]; 
-					
-					if(gen_map.keySet().contains(child_feature)) {
-					   child_feature += "_" + UID.toString();
-					   UID++;
-					}
-					
-					List<String> children 	 = gen_map.get(parent_feature);
-					children.add(child_feature);
-					split_point_map.put(child_feature, child_split_point);
-
-					gen_map.put(child_feature, new ArrayList<String>());
+					 String child 		  = rTreeNodes.get(j++);
+					 String[] child_split = child.split(" - ");
+					 String child_id		  = child_split[0].split(" ")[NODE_ID_POS].split(":")[VALUE_POS];
+					 String child_feature  	  = child_id + "_" + child_split[0].split(" ")[FEATURE_POS].split(":")[VALUE_POS];
+					 String parent_feature 	  = child_split[0].split(" ")[PARENT_POS].split(":")[VALUE_POS];
+					 String child_split_point = child_split[0].split(" ")[SPLIT_POS].split(":")[VALUE_POS]; 
+						
+					 List<String> children 	 = gen_map.get(parent_feature);
+					 children.add(child_feature);
+					 // System.out.println("Children of " + parent_feature + ":" + children);
+					 split_point_map.put(child_feature, child_split_point);
+					 
+					 if(!gen_map.keySet().contains(child_feature)) {
+					    gen_map.put(child_feature, new ArrayList<String>());
+					 }
+					 
+					 if (child_split.length > 1) {// 'child' DOES contains a leaf
+						 String leaf  		   = child_split[LEAF_POS].replaceFirst(" ", "_");
+						 List<String> new_leaf = new ArrayList<String>();  
+						 
+						 if (leaf_node_map.containsKey(child_feature)) {
+							 List<String> leaf_list = leaf_node_map.get(child_feature);
+							 leaf_list.add(leaf);
+							}
+						 else {
+							 new_leaf.add(leaf);
+							 leaf_node_map.put(child_feature, new_leaf);
+						 }
+						 
+					 }
 				}
 			}
 			System.out.println(gen_map);
+			System.out.println(leaf_node_map);
 			JSONArray children 		  = null;
 			JSONObject[] jsonObjArray = new JSONObject[gen_map.keySet().size()];
 			for (int i = 0; i < jsonObjArray.length; i++)
@@ -227,27 +346,12 @@ public class ModelAnalyzer {
 				   List<String> childChildren = gen_map.get(child_feature);
 				   childrenToProcess.addAll(childChildren);
 				   
-				   String[] child_feature_split = child_feature.split("_");
-				   String last_ID = child_feature_split[(child_feature_split.length - 1)];
-				   
-				   if (isNumeric(last_ID)){
-					   child_feature = "";
-					   for (int i = 0; i < child_feature_split.length - 1; i++) {
-						    child_feature += child_feature_split[i];
-					   }
-				   }
-				   
 				   JSONArray jsonChildChildren = new JSONArray(childChildren);
 				   childJSONObj.put("Feature", child_feature);
 				   childJSONObj.put("Split Point", split_point_map.get(child_feature));
-				   childJSONObj.put("Children", jsonChildChildren);
-			}
+				   childJSONObj.put("Children", jsonChildChildren);*/
 			
-			printJSONObjectArray(jsonObjArray);
-		} catch (IOException | JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			
 	}
 
 	private void printJSONObjectArray(JSONObject[] jsonObjArray) {
