@@ -129,14 +129,9 @@ public class ModelAnalyzer {
 		int line_ID 		= 0;
 		String line			= null;
 		String rootHashCode = null;
-		/*int max_level = -1;
-		Map<String,List<String>> branch_map    = new TreeMap<String, List<String>>();
-		Map<String,List<String>> gen_map       = new TreeMap<String, List<String>>();
-		Map<String, String> split_point_map    = new HashMap<String, String>();
-		Map<String,List<String>> leaf_node_map = new HashMap<String, List<String>>();*/
-		Map<String,String> hashcode_label_mapping   = new HashMap<String, String>();
+		Map<String,String> hashcode_label_mapping = new HashMap<String, String>();
 		Map<String,List<String>> edge_split_point_mapping = new HashMap<String, List<String>>();
-		Map<String,List<String>> edge_map		    = new HashMap<String,List<String>>();
+		Map<String,List<String>> edge_map		  = new HashMap<String,List<String>>();
 		
 		try {
 			BufferedReader br = new BufferedReader(fr);
@@ -266,14 +261,20 @@ public class ModelAnalyzer {
 			}
 			printJSONObjectArray(jsonObjArray);
 			
+			JSONObject finalObj = new JSONObject();
+			for (int i = 0; i < jsonObjArray.length; i++) {
+				 JSONObject obj = jsonObjArray[i];
+				 finalObj.put("RandomTreeNode" + i, obj);
+			} 
+			finalObj.put("NumTreeNodes", jsonObjArray.length);
+			System.out.println(finalObj);
+			
 			String filename = new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss").format(new Date());
 			filename 	    = "3.0-random_tree-" + filename  + ".json";
 			filename		= OUTPUT_DIR + "/" + filename;
 			
 			PrintWriter writer = new PrintWriter(filename, "UTF-8");
-			for (JSONObject jsonObject: jsonObjArray){
-				 writer.println(jsonObject.toString());
-			}
+			writer.println(finalObj.toString());
 			writer.close();
 			
 		} catch (IOException | JSONException e) {
