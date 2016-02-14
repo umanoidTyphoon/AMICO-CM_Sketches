@@ -34,9 +34,9 @@ public class ModelAnalyzer {
 	private static final int  SPLIT_POS    = 1;
 	
 	private static final String INPUT_DIR  = System.getProperty("user.dir") + 
-										   "/demo/model_analysis";
+										     "/demo/model_analysis";
 	private static final String OUTPUT_DIR = INPUT_DIR + "/out";
-	private static final String TEST_FILE  = OUTPUT_DIR + "/" + "3.0-random_trees-test2.txt";
+	private static final String TEST_FILE  = OUTPUT_DIR + "/" + "3.0-random_trees-2015-11-06_03-17-02.txt";
 	
 	private String input_model = null;
 	
@@ -83,7 +83,6 @@ public class ModelAnalyzer {
 					   		   " RANDOM FOREST CLASSIFIER DESCRIPTION "	 				       +	
 					   		   "-------------------------------------------------------------" );
 			System.out.println(classifier);
-			
 			System.out.println("-------------------------------------------------------------" +
 							   "---------------------------------"	 						   +	
 			   		   		   "-------------------------------------------------------------" );
@@ -94,7 +93,6 @@ public class ModelAnalyzer {
 			   		   		   " RANDOM FOREST BAGGER DESCRIPTION "	 				       +	
 			   		   		   "-------------------------------------------------------------" );
 			System.out.println(m_bagger);
-	
 			System.out.println("-------------------------------------------------------------" +
 							   "---------------------------------"	 						   +	
 			   		   		   "-------------------------------------------------------------" );
@@ -127,6 +125,7 @@ public class ModelAnalyzer {
 
 	private void writeFormattedStats(FileReader fr) {
 		int line_ID 		= 0;
+		int rand_tree_count = 0;
 		String line			= null;
 		String rootHashCode = null;
 		Map<String,String> hashcode_label_mapping = new HashMap<String, String>();
@@ -137,17 +136,86 @@ public class ModelAnalyzer {
 			BufferedReader br = new BufferedReader(fr);
 			line 			  = br.readLine();
 			 
+			JSONObject randomTreeContainer = new JSONObject();
 			while(line != null) {
-				boolean termination_condition_0 = line.startsWith("Random"); 
-				boolean termination_condition_1 = line.startsWith("=");
-				boolean termination_condition_2 = line.equals("");
-				boolean termination_condition_3 = line.startsWith("Size");
+				boolean termination_condition_0 = line.startsWith("All"); 
+				boolean termination_condition_1 = line.startsWith("Random"); 
+				boolean termination_condition_2 = line.startsWith("=");
+				boolean termination_condition_3 = line.equals("");
+				boolean termination_condition_4 = line.startsWith("Size");
 				
 				if(termination_condition_0 || termination_condition_1 ||
 				   termination_condition_2 || termination_condition_3){
 				   line = br.readLine();
 				   continue;
 				}
+				
+				if(termination_condition_4) {
+				   line    = br.readLine();
+				   /* DEBUG 
+					System.out.println(hashcode_label_mapping);
+					System.out.println(edge_map);
+					System.out.println(edge_split_point_mapping);*/
+					
+					JSONArray children 		  = null;
+					JSONArray root_splits	  = null;
+					JSONObject[] jsonObjArray = new JSONObject[hashcode_label_mapping.keySet().size()];
+					for (int i = 0; i < jsonObjArray.length; i++)
+						 jsonObjArray[i] = new JSONObject();
+					
+					int jsonObjArrayIndex		   = 1;
+					JSONObject rootJSONObj    	   = jsonObjArray[0];
+					List<String> rootChildren 	   = edge_map.get(rootHashCode);
+					List<String> childrenToProcess = new ArrayList<String>(rootChildren);
+
+					for (int i = 0; i < rootChildren.size(); i++) {
+						 rootChildren.set(i, hashcode_label_mapping.get(rootChildren.get(i)));
+					}
+					
+					children 	= new JSONArray(rootChildren); 
+					root_splits = new JSONArray(edge_split_point_mapping.get(rootHashCode));
+					rootJSONObj.put("Feature", hashcode_label_mapping.get(rootHashCode));
+					rootJSONObj.put("Split Point", root_splits);
+					rootJSONObj.put("Children", children);
+					
+					while(!childrenToProcess.isEmpty()) {
+						   JSONObject childJSONObj    = jsonObjArray[jsonObjArrayIndex++];
+						   String childHashCode 	  = childrenToProcess.remove(0);
+						   String childFeature        = hashcode_label_mapping.get(childHashCode);
+						   List<String> childChildren = edge_map.get(childHashCode);
+						   if (childChildren != null) {
+							   childrenToProcess.addAll(childChildren);
+						   
+							   for (int i = 0; i < childChildren.size(); i++) {
+								    childChildren.set(i, hashcode_label_mapping.get(childChildren.get(i)));
+							   }
+						   }
+						   JSONArray jsonChildChildren = new JSONArray(childChildren);
+						   JSONArray child_splits 	   = new JSONArray(edge_split_point_mapping.get(childHashCode));
+						   childJSONObj.put("Feature", childFeature);
+						   childJSONObj.put("Split Point", child_splits);
+						   childJSONObj.put("Children", jsonChildChildren);
+					}
+					printJSONObjectArray(jsonObjArray);
+					
+					JSONObject randomTree = new JSONObject();
+					for (int i = 0; i < jsonObjArray.length; i++) {
+						 JSONObject obj = jsonObjArray[i];
+						 randomTree.put("RandomTreeNode" + i, obj);
+					} 
+					randomTree.put("NumTreeNodes", jsonObjArray.length);
+					System.out.println(randomTree);
+					
+					randomTreeContainer.put("RandomTree" + rand_tree_count++, randomTree);
+					
+					line_ID = 0;
+					rootHashCode 		     = null;
+					hashcode_label_mapping   = new HashMap<String, String>();
+					edge_split_point_mapping = new HashMap<String, List<String>>();
+					edge_map 				 = new HashMap<String,List<String>>();
+					continue;
+				}
+				
 				/** Lines are in the following form:
 				 * 
 				 *  1 - N$RANDOM_TREE_NODE_HASHCODE$ [label="$LABEL$"]
@@ -215,66 +283,17 @@ public class ModelAnalyzer {
 				}
 				line = br.readLine();
 			}
-			/* DEBUG 
-			System.out.println(hashcode_label_mapping);
-			System.out.println(edge_map);
-			System.out.println(edge_split_point_mapping);*/
+			randomTreeContainer.put("NumRandomTrees", rand_tree_count);
 			
-			JSONArray children 		  = null;
-			JSONArray root_splits	  = null;
-			JSONObject[] jsonObjArray = new JSONObject[hashcode_label_mapping.keySet().size()];
-			for (int i = 0; i < jsonObjArray.length; i++)
-				 jsonObjArray[i] = new JSONObject();
-			
-			int jsonObjArrayIndex		   = 1;
-			JSONObject rootJSONObj    	   = jsonObjArray[0];
-			List<String> rootChildren 	   = edge_map.get(rootHashCode);
-			List<String> childrenToProcess = new ArrayList<String>(rootChildren);
-
-			for (int i = 0; i < rootChildren.size(); i++) {
-				 rootChildren.set(i, hashcode_label_mapping.get(rootChildren.get(i)));
-			}
-			
-			children 	= new JSONArray(rootChildren); 
-			root_splits = new JSONArray(edge_split_point_mapping.get(rootHashCode));
-			rootJSONObj.put("Feature", hashcode_label_mapping.get(rootHashCode));
-			rootJSONObj.put("Split Point", root_splits);
-			rootJSONObj.put("Children", children);
-			
-			while(!childrenToProcess.isEmpty()) {
-				   JSONObject childJSONObj    = jsonObjArray[jsonObjArrayIndex++];
-				   String childHashCode 	  = childrenToProcess.remove(0);
-				   String childFeature        = hashcode_label_mapping.get(childHashCode);
-				   List<String> childChildren = edge_map.get(childHashCode);
-				   if (childChildren != null) {
-					   childrenToProcess.addAll(childChildren);
-				   
-					   for (int i = 0; i < childChildren.size(); i++) {
-						    childChildren.set(i, hashcode_label_mapping.get(childChildren.get(i)));
-					   }
-				   }
-				   JSONArray jsonChildChildren = new JSONArray(childChildren);
-				   JSONArray child_splits 	   = new JSONArray(edge_split_point_mapping.get(childHashCode));
-				   childJSONObj.put("Feature", childFeature);
-				   childJSONObj.put("Split Point", child_splits);
-				   childJSONObj.put("Children", jsonChildChildren);
-			}
-			printJSONObjectArray(jsonObjArray);
-			
-			JSONObject finalObj = new JSONObject();
-			for (int i = 0; i < jsonObjArray.length; i++) {
-				 JSONObject obj = jsonObjArray[i];
-				 finalObj.put("RandomTreeNode" + i, obj);
-			} 
-			finalObj.put("NumTreeNodes", jsonObjArray.length);
-			System.out.println(finalObj);
+			JSONObject randomForest = new JSONObject();
+			randomForest.put("RandomForest", randomTreeContainer);
 			
 			String filename = new SimpleDateFormat("yyyy-MM-dd_hh-mm-ss").format(new Date());
-			filename 	    = "3.0-random_tree-" + filename  + ".json";
+			filename 	    = "3.0-random_forest-" + filename  + ".json";
 			filename		= OUTPUT_DIR + "/" + filename;
 			
 			PrintWriter writer = new PrintWriter(filename, "UTF-8");
-			writer.println(finalObj.toString());
+			writer.println(randomForest.toString());
 			writer.close();
 			
 		} catch (IOException | JSONException e) {
